@@ -1,0 +1,157 @@
+@model MoodPlaylistGenerator.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="display-4">Welcome back, @User.Identity!.Name!</h1>
+            <p class="lead">Your Mood Playlist Generator Dashboard</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-header">Total Songs</div>
+                <div class="card-body">
+                    <h4 class="card-title">@Model.TotalSongs</h4>
+                    <p class="card-text">Songs in your library</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-header">Total Playlists</div>
+                <div class="card-body">
+                    <h4 class="card-title">@Model.TotalPlaylists</h4>
+                    <p class="card-text">Generated playlists</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-header">Moods Available</div>
+                <div class="card-body">
+                    <h4 class="card-title">@Model.Moods.Count</h4>
+                    <p class="card-text">Mood categories</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-header">Quick Actions</div>
+                <div class="card-body">
+                    <a href="/Songs/Create" class="btn btn-light btn-sm">Add Song</a>
+                    <a href="/Playlists/Generate" class="btn btn-light btn-sm">Generate</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mood Overview -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Your Moods</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var mood in Model.Moods)
+                        {
+                            var songCount = Model.MoodSongCounts.ContainsKey(mood.Id) ? Model.MoodSongCounts[mood.Id] : 0;
+                            <div class="col-md-2 text-center mb-3">
+                                <div class="card" style="border-color: @mood.Color;">
+                                    <div class="card-body">
+                                        <h6 class="card-title" style="color: @mood.Color;">@mood.Name</h6>
+                                        <p class="card-text">
+                                            <strong>@songCount</strong> songs
+                                        </p>
+                                        <small class="text-muted">@mood.Description</small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Content -->
+    <div class="row">
+        <!-- Recent Songs -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Recent Songs</h5>
+                    <a href="/Songs" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentSongs.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var song in Model.RecentSongs.Take(5))
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@song.Title</h6>
+                                        <small>@song.CreatedAt.ToString("MMM dd")</small>
+                                    </div>
+                                    <p class="mb-1">by @song.Artist</p>
+                                    <small>
+                                        @foreach (var sm in song.SongMoods)
+                                        {
+                                            <span class="badge rounded-pill" style="background-color: @sm.Mood.Color;">@sm.Mood.Name</span>
+                                        }
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No songs yet. <a href="/Songs/Create">Add your first song!</a></p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Playlists -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Recent Playlists</h5>
+                    <a href="/Playlists" class="btn btn-sm btn-outline-success">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentPlaylists.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var playlist in Model.RecentPlaylists.Take(5))
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@playlist.Name</h6>
+                                        <small>@playlist.GeneratedAt.ToString("MMM dd")</small>
+                                    </div>
+                                    <p class="mb-1">
+                                        <span class="badge rounded-pill" style="background-color: @playlist.Mood.Color;">@playlist.Mood.Name</span>
+                                        @playlist.PlaylistSongs.Count songs
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No playlists yet. <a href="/Playlists/Generate">Generate your first playlist!</a></p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

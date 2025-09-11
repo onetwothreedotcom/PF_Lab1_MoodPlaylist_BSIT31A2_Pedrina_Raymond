@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "Mood Playlist Generator";
+}
+
+<div class="text-center">
+    <h1 class="display-4">🎵 Mood Playlist Generator</h1>
+    <p class="lead">Create personalized YouTube playlists based on your mood</p>
+    
+    @if (!User.Identity!.IsAuthenticated)
+    {
+        <div class="row justify-content-center mt-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h3>Get Started</h3>
+                        <p>Organize your favorite YouTube music by mood and generate random playlists!</p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a href="/Account/Register" class="btn btn-primary btn-lg me-md-2">Register</a>
+                            <a href="/Account/Login" class="btn btn-outline-secondary btn-lg">Login</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🎶 Add Songs</h5>
+                        <p class="card-text">Save your favorite YouTube songs and tag them with moods</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">😊 Choose Moods</h5>
+                        <p class="card-text">Happy, Sad, Energetic, Relaxed, Romantic, Focus - pick your vibe</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🔀 Generate Playlists</h5>
+                        <p class="card-text">Let us create random playlists based on your mood selection</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
