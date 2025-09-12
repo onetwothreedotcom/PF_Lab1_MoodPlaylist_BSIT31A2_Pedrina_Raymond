@@ -1,0 +1,156 @@
+@model MoodPlaylistGenerator.ViewModels.SongDetailViewModel
+@{
+    ViewBag.Title = Model.Song.Title;
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-music"></i> @Model.Song.Title</h2>
+                    <p class="text-muted mb-0">by @Model.Song.Artist</p>
+                </div>
+                <div>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Songs
+                    </a>
+                    <a asp-action="Edit" asp-route-id="@Model.Song.Id" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fab fa-youtube"></i> YouTube Video</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            @if (!string.IsNullOrEmpty(Model.YouTubeVideoId))
+                            {
+                                <div class="position-relative">
+                                    <!-- Video Player Controls -->
+                                    <div class="video-controls p-3 bg-dark text-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0 text-white">Now Playing: @Model.Song.Title</h6>
+                                            <small class="text-light opacity-75">by @Model.Song.Artist</small>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-outline-light btn-sm" onclick="toggleTheater()">
+                                                <i class="fas fa-expand" id="theaterIcon"></i>
+                                            </button>
+                                            <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-light btn-sm">
+                                                <i class="fab fa-youtube"></i> YouTube
+                                            </a>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Video Container -->
+                                    <div class="youtube-container" id="videoContainer">
+                                        <div class="ratio ratio-16x9">
+                                            <iframe id="youtubePlayer" 
+                                                    src="https://www.youtube.com/embed/@Model.YouTubeVideoId?enablejsapi=1&modestbranding=1&rel=0" 
+                                                    title="@Model.Song.Title by @Model.Song.Artist"
+                                                    frameborder="0" 
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                                    allowfullscreen>
+                                            </iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                                    <p class="text-muted">Unable to load video preview</p>
+                                    <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-primary">
+                                        <i class="fab fa-youtube"></i> Open in YouTube
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                        <div class="card-footer">
+                            <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-primary">
+                                <i class="fab fa-youtube"></i> Watch on YouTube
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 mt-4 mt-lg-0">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-info-circle"></i> Song Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">Title:</dt>
+                                <dd class="col-sm-8">@Model.Song.Title</dd>
+
+                                <dt class="col-sm-4">Artist:</dt>
+                                <dd class="col-sm-8">@Model.Song.Artist</dd>
+
+                                <dt class="col-sm-4">Added:</dt>
+                                <dd class="col-sm-8">@Model.Song.CreatedAt.ToString("MMM dd, yyyy")</dd>
+
+                                <dt class="col-sm-4">Moods:</dt>
+                                <dd class="col-sm-8">
+                                    @if (Model.AssignedMoods.Any())
+                                    {
+                                        @foreach (var mood in Model.AssignedMoods)
+                                        {
+                                            <span class="badge me-1 mb-1" style="background-color: @mood.Color;">
+                                                @mood.Name
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No moods assigned</span>
+                                    }
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="card-footer">
+                            <form asp-action="Delete" asp-route-id="@Model.Song.Id" method="post" class="d-grid">
+                                <button type="submit" class="btn btn-outline-danger" 
+                                        onclick="return confirm('Are you sure you want to delete this song?')">
+                                    <i class="fas fa-trash"></i> Delete Song
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    @if (Model.AssignedMoods.Any())
+                    {
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-palette"></i> Mood Information</h6>
+                            </div>
+                            <div class="card-body">
+                                @foreach (var mood in Model.AssignedMoods)
+                                {
+                                    <div class="mb-2">
+                                        <h6 class="mb-1" style="color: @mood.Color;">@mood.Name</h6>
+                                        <small class="text-muted">@mood.Description</small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

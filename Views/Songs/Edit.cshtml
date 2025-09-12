@@ -1,0 +1,88 @@
+@model MoodPlaylistGenerator.ViewModels.EditSongViewModel
+@{
+    ViewBag.Title = "Edit Song";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title mb-0"><i class="fas fa-edit"></i> Edit Song</h2>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label">Song Title *</label>
+                            <input asp-for="Title" type="text" class="form-control" placeholder="Enter song title" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Artist" class="form-label">Artist *</label>
+                            <input asp-for="Artist" type="text" class="form-control" placeholder="Enter artist name" />
+                            <span asp-validation-for="Artist" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="YouTubeUrl" class="form-label">YouTube URL *</label>
+                            <input asp-for="YouTubeUrl" type="url" class="form-control" placeholder="https://www.youtube.com/watch?v=..." />
+                            <span asp-validation-for="YouTubeUrl" class="text-danger"></span>
+                            <div class="form-text">
+                                Paste the YouTube URL for this song. Both youtube.com and youtu.be links are supported.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Select Moods</label>
+                            <div class="form-text mb-2">Choose one or more moods that match this song.</div>
+                            <div class="row">
+                                @for (int i = 0; i < Model.AvailableMoods.Count; i++)
+                                {
+                                    var mood = Model.AvailableMoods[i];
+                                    <div class="col-md-6 col-lg-4 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="SelectedMoodIds" value="@mood.Id" id="mood@(mood.Id)"
+                                                   @(Model.SelectedMoodIds.Contains(mood.Id) ? "checked" : "") />
+                                            <label class="form-check-label" for="mood@(mood.Id)" style="color: @mood.Color;">
+                                                <strong>@mood.Name</strong>
+                                                <br><small class="text-muted">@mood.Description</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <span asp-validation-for="SelectedMoodIds" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-lightbulb"></i> Tips</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><i class="fas fa-check text-success me-2"></i> Make sure the YouTube URL is accessible</li>
+                        <li><i class="fas fa-check text-success me-2"></i> Select moods that best represent the song's vibe</li>
+                        <li><i class="fas fa-check text-success me-2"></i> Changes will be saved immediately</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

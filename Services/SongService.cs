@@ -123,21 +123,34 @@ namespace MoodPlaylistGenerator.Services
 
         public string ExtractYouTubeVideoId(string url)
         {
-            // Extract video ID from various YouTube URL formats
-            var uri = new Uri(url);
-            
-            if (uri.Host.Contains("youtu.be"))
+            try
             {
-                return uri.AbsolutePath.TrimStart('/');
-            }
-            
-            if (uri.Host.Contains("youtube.com"))
-            {
-                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                return query["v"] ?? "";
-            }
+                // Extract video ID from various YouTube URL formats
+                var uri = new Uri(url);
+                
+                if (uri.Host.Contains("youtu.be"))
+                {
+                    return uri.AbsolutePath.TrimStart('/');
+                }
+                
+                if (uri.Host.Contains("youtube.com"))
+                {
+                    // Parse query string manually for .NET 9.0 compatibility
+                    var queryString = uri.Query.TrimStart('?');
+                    var queryParams = queryString.Split('&')
+                        .Select(param => param.Split('='))
+                        .Where(pair => pair.Length == 2)
+                        .ToDictionary(pair => pair[0], pair => Uri.UnescapeDataString(pair[1]));
+                    
+                    return queryParams.TryGetValue("v", out var videoId) ? videoId : "";
+                }
 
-            return "";
+                return "";
+            }
+            catch
+            {
+                return "";
+            }
         }
     }
 }
