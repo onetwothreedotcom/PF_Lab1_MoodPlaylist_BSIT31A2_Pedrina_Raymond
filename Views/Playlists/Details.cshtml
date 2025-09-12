@@ -66,10 +66,10 @@
                     <div class="list-group list-group-flush">
                         @foreach (var playlistSong in Model.Songs.OrderBy(s => s.Position))
                         {
-                            <div class="list-group-item">
+                            <div class="list-group-item" id="song-@playlistSong.Position">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center">
-                                        <span class="badge bg-secondary rounded-circle me-3">@playlistSong.Position</span>
+                                        <span class="badge bg-secondary rounded-circle me-3" id="badge-@playlistSong.Position">@playlistSong.Position</span>
                                         <div>
                                             <h6 class="mb-1">@playlistSong.Song.Title</h6>
                                             <p class="mb-1 text-muted">by @playlistSong.Song.Artist</p>
@@ -86,7 +86,7 @@
                                     </div>
                                     <div class="btn-group-vertical">
                                         <button class="btn btn-outline-primary btn-sm" 
-                                                onclick="playSong('@Html.Raw(playlistSong.Song.YouTubeUrl)', '@Html.Raw(playlistSong.Song.Title)', '@Html.Raw(playlistSong.Song.Artist)')">
+                                                onclick="playSong('@Html.Raw(playlistSong.Song.YouTubeUrl)', '@Html.Raw(playlistSong.Song.Title)', '@Html.Raw(playlistSong.Song.Artist)', @playlistSong.Position)">
                                             <i class="fas fa-play"></i> Play
                                         </button>
                                         <a href="@playlistSong.Song.YouTubeUrl" target="_blank" 
@@ -128,7 +128,21 @@
                 </div>
                 <div class="p-3">
                     <h6 id="currentSongTitle" class="mb-1"></h6>
-                    <p id="currentSongArtist" class="text-muted mb-0"></p>
+                    <p id="currentSongArtist" class="text-muted mb-2"></p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="playPrevious()" id="prevBtn">
+                            <i class="fas fa-step-backward"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="playNext()" id="nextBtn">
+                            <i class="fas fa-step-forward"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="closePlayer()">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                    </div>
+                    <div class="mt-2 text-center">
+                        <small class="text-muted" id="songPosition"></small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -173,6 +187,182 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function playSong(youtubeUrl, title, artist, position = null) {
+            // Extract video ID from YouTube URL
+            const videoId = extractYouTubeVideoId(youtubeUrl);
+            
+            if (videoId) {
+                // Update current song index if position is provided
+                if (position !== null) {
+                    currentSongIndex = currentPlaylistSongs.findIndex(s => s.position === position);
+                } else {
+                    // Find the song in playlist by URL
+                    currentSongIndex = currentPlaylistSongs.findIndex(s => s.url === youtubeUrl);
+                }
+                
+                // Update player iframe source
+                const iframe = document.getElementById('youtubePlayer');
+                iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+                
+                // Update song info
+                document.getElementById('currentSongTitle').textContent = title;
+                document.getElementById('currentSongArtist').textContent = `by ${artist}`;
+                
+                // Update position info
+                const positionText = currentSongIndex >= 0 ? 
+                    `Song ${currentSongIndex + 1} of ${currentPlaylistSongs.length}` : '';
+                document.getElementById('songPosition').textContent = positionText;
+                
+                // Update button states
+                updatePlayerButtons();
+                
+                // Highlight current song
+                highlightCurrentSong();
+                
+                // Show player card
+                document.getElementById('playerCard').style.display = 'block';
+                document.getElementById('quickActionsCard').style.marginTop = '1rem';
+                
+                // Scroll to player
+                document.getElementById('playerCard').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            } else {
+                alert('Invalid YouTube URL');
+            }
+        }
+        
+        function closePlayer() {
+            // Hide player and clear iframe
+            document.getElementById('playerCard').style.display = 'none';
+            document.getElementById('youtubePlayer').src = '';
+            document.getElementById('quickActionsCard').style.marginTop = '0';
+            
+            // Reset current song tracking
+            currentSongIndex = -1;
+            
+            // Remove highlights
+            highlightCurrentSong();
+            
+            // Reset all badges to show position numbers
+            document.querySelectorAll('[id^="badge-"]').forEach(badge => {
+                const position = badge.id.split('-')[1];
+                badge.innerHTML = position;
+            });
+        }
+        
+        function extractYouTubeVideoId(url) {
+            try {
+                const urlObj = new URL(url);
+                
+                // Handle youtu.be format
+                if (urlObj.hostname === 'youtu.be') {
+                    return urlObj.pathname.slice(1);
+                }
+                
+                // Handle youtube.com format
+                if (urlObj.hostname.includes('youtube.com')) {
+                    return urlObj.searchParams.get('v');
+                }
+                
+                return null;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        // Add playlist control functionality
+        let currentPlaylistSongs = [];
+        let currentSongIndex = -1;
+        
+        // Initialize playlist data
+        document.addEventListener('DOMContentLoaded', function() {
+            // Extract playlist data from the page
+            @{var songList = Model.Songs.OrderBy(s => s.Position).ToList();}
+            currentPlaylistSongs = [
+                @foreach(var song in songList)
+                {
+                    @:{
+                        @:url: '@Html.Raw(song.Song.YouTubeUrl)',
+                        @:title: '@Html.Raw(song.Song.Title)',
+                        @:artist: '@Html.Raw(song.Song.Artist)',
+                        @:position: @song.Position
+                    @:}@(songList.LastOrDefault() != song ? "," : "")
+                }
+            ];
+        });
+        
+        function updatePlayerButtons() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            // Disable/enable buttons based on position
+            prevBtn.disabled = currentSongIndex <= 0;
+            nextBtn.disabled = currentSongIndex >= currentPlaylistSongs.length - 1;
+            
+            // Update button styling
+            if (prevBtn.disabled) {
+                prevBtn.classList.add('opacity-50');
+            } else {
+                prevBtn.classList.remove('opacity-50');
+            }
+            
+            if (nextBtn.disabled) {
+                nextBtn.classList.add('opacity-50');
+            } else {
+                nextBtn.classList.remove('opacity-50');
+            }
+        }
+        
+        function highlightCurrentSong() {
+            // Remove previous highlights
+            document.querySelectorAll('.list-group-item').forEach(item => {
+                item.classList.remove('list-group-item-primary', 'border-primary');
+            });
+            
+            document.querySelectorAll('[id^="badge-"]').forEach(badge => {
+                badge.classList.remove('bg-primary');
+                badge.classList.add('bg-secondary');
+            });
+            
+            // Highlight current song if playing
+            if (currentSongIndex >= 0) {
+                const currentSong = currentPlaylistSongs[currentSongIndex];
+                const songElement = document.getElementById(`song-${currentSong.position}`);
+                const badgeElement = document.getElementById(`badge-${currentSong.position}`);
+                
+                if (songElement && badgeElement) {
+                    songElement.classList.add('list-group-item-primary', 'border-primary');
+                    badgeElement.classList.remove('bg-secondary');
+                    badgeElement.classList.add('bg-primary');
+                    
+                    // Add playing icon
+                    badgeElement.innerHTML = '<i class="fas fa-play"></i>';
+                }
+            }
+        }
+        
+        function playNext() {
+            if (currentSongIndex < currentPlaylistSongs.length - 1) {
+                currentSongIndex++;
+                const song = currentPlaylistSongs[currentSongIndex];
+                playSong(song.url, song.title, song.artist, song.position);
+            }
+        }
+        
+        function playPrevious() {
+            if (currentSongIndex > 0) {
+                currentSongIndex--;
+                const song = currentPlaylistSongs[currentSongIndex];
+                playSong(song.url, song.title, song.artist, song.position);
+            }
+        }
+    </script>
+}
 
 <!-- Edit Name Modal -->
 <div class="modal fade" id="editNameModal" tabindex="-1">
