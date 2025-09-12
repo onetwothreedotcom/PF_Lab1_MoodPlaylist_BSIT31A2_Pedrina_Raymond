@@ -1,0 +1,114 @@
+@model MoodPlaylistGenerator.ViewModels.SongDetailViewModel
+@{
+    ViewData["Title"] = Model.Song.Title;
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>🎵 @Model.Song.Title</h3>
+                <div class="btn-group">
+                    <a asp-action="Edit" asp-route-id="@Model.Song.Id" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <form method="post" asp-action="Delete" asp-route-id="@Model.Song.Id" 
+                          style="display: inline;" 
+                          onsubmit="return confirm('Are you sure you want to delete this song?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Artist:</strong></div>
+                    <div class="col-sm-9">@Model.Song.Artist</div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>YouTube URL:</strong></div>
+                    <div class="col-sm-9">
+                        <a href="@Model.Song.YouTubeUrl" target="_blank" class="text-decoration-none">
+                            🎬 Watch on YouTube
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Moods:</strong></div>
+                    <div class="col-sm-9">
+                        @if (Model.AssignedMoods.Any())
+                        {
+                            @foreach (var mood in Model.AssignedMoods)
+                            {
+                                <span class="badge rounded-pill me-2 mb-1" 
+                                      style="background-color: @mood.Color; color: white;">
+                                    @mood.Name
+                                </span>
+                            }
+                        }
+                        else
+                        {
+                            <em class="text-muted">No moods assigned</em>
+                        }
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Added:</strong></div>
+                    <div class="col-sm-9">@Model.Song.CreatedAt.ToString("MMMM dd, yyyy 'at' hh:mm tt")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        @if (!string.IsNullOrEmpty(Model.YouTubeVideoId))
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h5>🎬 Preview</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="ratio ratio-16x9">
+                        <iframe src="https://www.youtube.com/embed/@Model.YouTubeVideoId" 
+                                title="YouTube video player" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.AssignedMoods.Any())
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>🎭 Mood Information</h5>
+                </div>
+                <div class="card-body">
+                    @foreach (var mood in Model.AssignedMoods)
+                    {
+                        <div class="mb-2">
+                            <span class="badge rounded-pill me-2" 
+                                  style="background-color: @mood.Color; color: white;">
+                                @mood.Name
+                            </span>
+                            <small class="text-muted">@mood.Description</small>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Songs
+    </a>
+</div>
