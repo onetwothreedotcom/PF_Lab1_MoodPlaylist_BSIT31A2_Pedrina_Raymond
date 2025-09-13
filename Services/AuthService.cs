@@ -5,7 +5,7 @@ using BCrypt.Net;
 
 namespace MoodPlaylistGenerator.Services
 {
-    public class AuthService
+    public class AuthService : IAuthService
     {
         private readonly ApplicationDbContext _context;
 
@@ -19,7 +19,7 @@ namespace MoodPlaylistGenerator.Services
             // Check if user exists
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == email || u.Username == username);
-            
+
             if (existingUser != null)
                 return null;
 

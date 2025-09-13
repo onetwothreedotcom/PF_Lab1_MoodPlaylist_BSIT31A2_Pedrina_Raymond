@@ -1,0 +1,134 @@
+@model MoodPlaylistGenerator.ViewModels.GeneratePlaylistViewModel
+@{
+    ViewData["Title"] = "Generate Playlist";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3>🎲 Generate New Playlist</h3>
+                <p class="mb-0 text-muted">Create a randomized playlist based on your mood</p>
+            </div>
+            <div class="card-body">
+                <form asp-action="Generate">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    
+                    <div class="mb-4">
+                        <label asp-for="SelectedMoodId" class="form-label">Select Mood</label>
+                        <div class="row">
+                            @foreach (var mood in Model.AvailableMoods)
+                            {
+                                var songCount = Model.MoodSongCounts.ContainsKey(mood.Id) ? Model.MoodSongCounts[mood.Id] : 0;
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" 
+                                               name="SelectedMoodId" value="@mood.Id" 
+                                               id="mood_@mood.Id" 
+                                               @(songCount == 0 ? "disabled" : "") />
+                                        <label class="form-check-label w-100" for="mood_@mood.Id">
+                                            <div class="card @(songCount == 0 ? "text-muted" : "")">
+                                                <div class="card-body p-3">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <span class="badge rounded-pill me-2" 
+                                                                  style="background-color: @mood.Color; color: white;">
+                                                                @mood.Name
+                                                            </span>
+                                                            <br>
+                                                            <small class="text-muted">@mood.Description</small>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <strong>@songCount</strong>
+                                                            <br>
+                                                            <small class="text-muted">songs</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        @if (!Model.AvailableMoods.Any() || Model.MoodSongCounts.Values.Sum() == 0)
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                You need to add some songs first before generating playlists.
+                                <a href="@Url.Action("Index", "Songs")" class="alert-link">Add songs now</a>
+                            </div>
+                        }
+                        <span asp-validation-for="SelectedMoodId" class="text-danger"></span>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="SongCount" class="form-label">Number of Songs</label>
+                            <input asp-for="SongCount" class="form-control" type="number" min="1" max="50" />
+                            <div class="form-text">Choose between 1 and 50 songs</div>
+                            <span asp-validation-for="SongCount" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="PlaylistName" class="form-label">Playlist Name (Optional)</label>
+                            <input asp-for="PlaylistName" class="form-control" placeholder="Leave empty for auto-generated name" />
+                            <span asp-validation-for="PlaylistName" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary" 
+                                @(Model.MoodSongCounts.Values.Sum() == 0 ? "disabled" : "")>
+                            <i class="fas fa-magic"></i> Generate Playlist
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.MoodSongCounts.Any())
+        {
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>📊 Your Music Library</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var mood in Model.AvailableMoods)
+                        {
+                            var count = Model.MoodSongCounts.ContainsKey(mood.Id) ? Model.MoodSongCounts[mood.Id] : 0;
+                            <div class="col-md-6 col-lg-4 mb-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge rounded-pill me-2" 
+                                          style="background-color: @mood.Color; color: white;">
+                                        @mood.Name
+                                    </span>
+                                    <span class="text-muted">@count songs</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="mt-3">
+                        <strong>Total: @Model.MoodSongCounts.Values.Sum() songs</strong>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Auto-select mood radio when clicking anywhere on the card
+        document.querySelectorAll('.form-check-label').forEach(label => {
+            label.addEventListener('click', function() {
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio && !radio.disabled) {
+                    radio.checked = true;
+                }
+            });
+        });
+    </script>
+}
