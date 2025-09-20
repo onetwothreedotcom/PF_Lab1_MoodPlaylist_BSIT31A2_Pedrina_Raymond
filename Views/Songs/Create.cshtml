@@ -11,7 +11,7 @@
                     <h2 class="card-title mb-0"><i class="fas fa-plus"></i> Add New Song</h2>
                 </div>
                 <div class="card-body">
-                    <form asp-action="Create" method="post">
+                    <form asp-action="Create" method="post" enctype="multipart/form-data">
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
                         <div class="mb-3">
@@ -26,12 +26,49 @@
                             <span asp-validation-for="Artist" class="text-danger"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="YouTubeUrl" class="form-label">YouTube URL *</label>
+                        <!-- Media Source Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">Media Source *</label>
+                            <div class="btn-group d-flex" role="group" aria-label="Media source selection">
+                                <input type="radio" class="btn-check" name="MediaSource" id="youtube-source" value="youtube" 
+                                       @(Model.MediaSource == "youtube" ? "checked" : "") />
+                                <label class="btn btn-outline-primary" for="youtube-source">
+                                    <i class="fab fa-youtube"></i> YouTube URL
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="MediaSource" id="upload-source" value="upload" 
+                                       @(Model.MediaSource == "upload" ? "checked" : "") />
+                                <label class="btn btn-outline-success" for="upload-source">
+                                    <i class="fas fa-upload"></i> Upload File
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- YouTube URL Section -->
+                        <div id="youtube-section" class="mb-3" style="display: @(Model.MediaSource == "youtube" ? "block" : "none");">
+                            <label asp-for="YouTubeUrl" class="form-label">YouTube URL</label>
                             <input asp-for="YouTubeUrl" type="url" class="form-control" placeholder="https://www.youtube.com/watch?v=..." />
                             <span asp-validation-for="YouTubeUrl" class="text-danger"></span>
                             <div class="form-text">
                                 Paste the YouTube URL for this song. Both youtube.com and youtu.be links are supported.
+                            </div>
+                        </div>
+
+                        <!-- File Upload Section -->
+                        <div id="upload-section" class="mb-3" style="display: @(Model.MediaSource == "upload" ? "block" : "none");">
+                            <label asp-for="MediaFile" class="form-label">Upload Media File</label>
+                            <input asp-for="MediaFile" type="file" class="form-control" 
+                                   accept="@(Model.UploadConstraints.HasValue ? string.Join(",", Model.UploadConstraints.Value.VideoExtensions.Concat(Model.UploadConstraints.Value.AudioExtensions)) : "")" />
+                            <span asp-validation-for="MediaFile" class="text-danger"></span>
+                            <div class="form-text">
+                                @if (Model.UploadConstraints.HasValue)
+                                {
+                                    var constraints = Model.UploadConstraints.Value;
+                                    <strong>Supported formats:</strong><br>
+                                    <strong>Video:</strong> @string.Join(", ", constraints.VideoExtensions)<br>
+                                    <strong>Audio:</strong> @string.Join(", ", constraints.AudioExtensions)<br>
+                                    <strong>Max file size:</strong> @(constraints.MaxSizeBytes / 1024 / 1024)<text> MB</text>
+                                }
                             </div>
                         </div>
 
@@ -85,3 +122,29 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Handle media source switching
+    document.addEventListener('DOMContentLoaded', function() {
+        const youtubeRadio = document.getElementById('youtube-source');
+        const uploadRadio = document.getElementById('upload-source');
+        const youtubeSection = document.getElementById('youtube-section');
+        const uploadSection = document.getElementById('upload-section');
+
+        function toggleSections() {
+            if (youtubeRadio.checked) {
+                youtubeSection.style.display = 'block';
+                uploadSection.style.display = 'none';
+            } else if (uploadRadio.checked) {
+                youtubeSection.style.display = 'none';
+                uploadSection.style.display = 'block';
+            }
+        }
+
+        youtubeRadio.addEventListener('change', toggleSections);
+        uploadRadio.addEventListener('change', toggleSections);
+        
+        // Initialize on page load
+        toggleSections();
+    });
+</script>

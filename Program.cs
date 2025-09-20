@@ -16,6 +16,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<SongService>();
 builder.Services.AddScoped<PlaylistService>();
+builder.Services.AddScoped<MediaStorageService>();
 
 // Add authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -38,6 +39,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // Enable serving static files from wwwroot
 app.UseRouting();
 
 app.UseAuthentication();

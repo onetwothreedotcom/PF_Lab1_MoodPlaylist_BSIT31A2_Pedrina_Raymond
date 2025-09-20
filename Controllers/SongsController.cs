@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using MoodPlaylistGenerator.Services;
 using MoodPlaylistGenerator.ViewModels;
+using MoodPlaylistGenerator.Models;
 
 namespace MoodPlaylistGenerator.Controllers
 {
@@ -61,11 +62,17 @@ namespace MoodPlaylistGenerator.Controllers
             if (song == null)
                 return NotFound();
 
+            var isLocalMediaMissing = _songService.IsLocalMediaMissing(song);
+            var mediaUrl = _songService.GetMediaUrl(song);
+            
             var viewModel = new SongDetailViewModel
             {
                 Song = song,
-                YouTubeVideoId = _songService.ExtractYouTubeVideoId(song.YouTubeUrl),
-                AssignedMoods = song.SongMoods.Select(sm => sm.Mood).ToList()
+                YouTubeVideoId = song.IsLocalMedia ? "" : _songService.ExtractYouTubeVideoId(song.YouTubeUrl),
+                AssignedMoods = song.SongMoods.Select(sm => sm.Mood).ToList(),
+                MediaUrl = mediaUrl,
+                IsLocalMediaMissing = isLocalMediaMissing,
+                IsUsingRickRollFallback = isLocalMediaMissing
             };
 
             return View(viewModel);
@@ -76,7 +83,8 @@ namespace MoodPlaylistGenerator.Controllers
         {
             var viewModel = new CreateSongViewModel
             {
-                AvailableMoods = await _songService.GetAllMoodsAsync()
+                AvailableMoods = await _songService.GetAllMoodsAsync(),
+                UploadConstraints = _songService.GetUploadConstraints()
             };
 
             return View(viewModel);
@@ -85,9 +93,20 @@ namespace MoodPlaylistGenerator.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(CreateSongViewModel model)
         {
+            // Validate based on media source
+            if (model.MediaSource == "upload" && (model.MediaFile == null || model.MediaFile.Length == 0))
+            {
+                ModelState.AddModelError(nameof(model.MediaFile), "Please select a media file to upload.");
+            }
+            else if (model.MediaSource == "youtube" && string.IsNullOrEmpty(model.YouTubeUrl))
+            {
+                ModelState.AddModelError(nameof(model.YouTubeUrl), "Please provide a YouTube URL.");
+            }
+
             if (!ModelState.IsValid)
             {
                 model.AvailableMoods = await _songService.GetAllMoodsAsync();
+                model.UploadConstraints = _songService.GetUploadConstraints();
                 return View(model);
             }
 
@@ -95,20 +114,33 @@ namespace MoodPlaylistGenerator.Controllers
             
             try
             {
-                await _songService.CreateSongAsync(
-                    model.Title, 
-                    model.Artist, 
-                    model.YouTubeUrl, 
-                    userId, 
-                    model.SelectedMoodIds);
+                if (model.MediaSource == "upload" && model.MediaFile != null)
+                {
+                    await _songService.CreateSongWithLocalMediaAsync(
+                        model.Title, 
+                        model.Artist, 
+                        model.MediaFile, 
+                        userId, 
+                        model.SelectedMoodIds);
+                }
+                else
+                {
+                    await _songService.CreateSongAsync(
+                        model.Title, 
+                        model.Artist, 
+                        model.YouTubeUrl, 
+                        userId, 
+                        model.SelectedMoodIds);
+                }
 
                 TempData["SuccessMessage"] = "Song added successfully!";
                 return RedirectToAction(nameof(Index));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                ModelState.AddModelError("", "An error occurred while adding the song.");
+                ModelState.AddModelError("", ex.Message);
                 model.AvailableMoods = await _songService.GetAllMoodsAsync();
+                model.UploadConstraints = _songService.GetUploadConstraints();
                 return View(model);
             }
         }
@@ -128,8 +160,13 @@ namespace MoodPlaylistGenerator.Controllers
                 Title = song.Title,
                 Artist = song.Artist,
                 YouTubeUrl = song.YouTubeUrl,
+                MediaSource = song.IsLocalMedia ? "upload" : "youtube",
                 SelectedMoodIds = song.SongMoods.Select(sm => sm.MoodId).ToList(),
-                AvailableMoods = await _songService.GetAllMoodsAsync()
+                AvailableMoods = await _songService.GetAllMoodsAsync(),
+                UploadConstraints = _songService.GetUploadConstraints(),
+                HasLocalMedia = song.IsLocalMedia,
+                CurrentMediaType = song.LocalFileType ?? "",
+                CurrentFileName = song.LocalFileName ?? ""
             };
 
             return View(viewModel);
@@ -138,9 +175,24 @@ namespace MoodPlaylistGenerator.Controllers
         [HttpPost]
         public async Task<IActionResult> Edit(EditSongViewModel model)
         {
+            // Validate based on media source and whether a file is uploaded
+            if (model.MediaSource == "upload" && model.MediaFile != null && model.MediaFile.Length > 0)
+            {
+                // User is uploading a new file - this is valid
+            }
+            else if (model.MediaSource == "youtube" && string.IsNullOrEmpty(model.YouTubeUrl))
+            {
+                ModelState.AddModelError(nameof(model.YouTubeUrl), "Please provide a YouTube URL.");
+            }
+            else if (model.MediaSource == "upload" && !model.HasLocalMedia && (model.MediaFile == null || model.MediaFile.Length == 0))
+            {
+                ModelState.AddModelError(nameof(model.MediaFile), "Please select a media file to upload.");
+            }
+
             if (!ModelState.IsValid)
             {
                 model.AvailableMoods = await _songService.GetAllMoodsAsync();
+                model.UploadConstraints = _songService.GetUploadConstraints();
                 return View(model);
             }
 
@@ -148,13 +200,30 @@ namespace MoodPlaylistGenerator.Controllers
             
             try
             {
-                var updatedSong = await _songService.UpdateSongAsync(
-                    model.Id, 
-                    userId, 
-                    model.Title, 
-                    model.Artist, 
-                    model.YouTubeUrl, 
-                    model.SelectedMoodIds);
+                Song? updatedSong;
+                
+                if (model.MediaSource == "upload")
+                {
+                    // Handle local media update
+                    updatedSong = await _songService.UpdateSongWithLocalMediaAsync(
+                        model.Id,
+                        userId,
+                        model.Title,
+                        model.Artist,
+                        model.MediaFile,
+                        model.SelectedMoodIds);
+                }
+                else
+                {
+                    // Handle YouTube URL update (this may clear local media if switching from local to YouTube)
+                    updatedSong = await _songService.UpdateSongAsync(
+                        model.Id, 
+                        userId, 
+                        model.Title, 
+                        model.Artist, 
+                        model.YouTubeUrl, 
+                        model.SelectedMoodIds);
+                }
 
                 if (updatedSong == null)
                     return NotFound();
@@ -162,10 +231,11 @@ namespace MoodPlaylistGenerator.Controllers
                 TempData["SuccessMessage"] = "Song updated successfully!";
                 return RedirectToAction(nameof(Details), new { id = model.Id });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                ModelState.AddModelError("", "An error occurred while updating the song.");
+                ModelState.AddModelError("", ex.Message);
                 model.AvailableMoods = await _songService.GetAllMoodsAsync();
+                model.UploadConstraints = _songService.GetUploadConstraints();
                 return View(model);
             }
         }

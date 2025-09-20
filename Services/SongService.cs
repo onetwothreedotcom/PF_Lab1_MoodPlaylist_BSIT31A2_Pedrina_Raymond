@@ -7,10 +7,12 @@ namespace MoodPlaylistGenerator.Services
     public class SongService
     {
         private readonly ApplicationDbContext _context;
+        private readonly MediaStorageService _mediaStorageService;
 
-        public SongService(ApplicationDbContext context)
+        public SongService(ApplicationDbContext context, MediaStorageService mediaStorageService)
         {
             _context = context;
+            _mediaStorageService = mediaStorageService;
         }
 
         public async Task<List<Song>> GetUserSongsAsync(int userId)
@@ -93,6 +95,97 @@ namespace MoodPlaylistGenerator.Services
             return await GetSongByIdAsync(songId, userId);
         }
 
+        public async Task<Song> CreateSongWithLocalMediaAsync(string title, string artist, IFormFile mediaFile, int userId, List<int> moodIds)
+        {
+            var uploadResult = await _mediaStorageService.SaveMediaFileAsync(mediaFile, userId);
+            
+            if (!uploadResult.Success)
+                throw new InvalidOperationException(uploadResult.ErrorMessage ?? "Failed to upload media file");
+
+            var song = new Song
+            {
+                Title = title,
+                Artist = artist,
+                YouTubeUrl = string.Empty, // Empty for local media
+                LocalFilePath = uploadResult.FilePath,
+                LocalFileName = uploadResult.FileName,
+                LocalFileType = uploadResult.FileType,
+                LocalFileSizeBytes = uploadResult.FileSize,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Songs.Add(song);
+            await _context.SaveChangesAsync();
+
+            // Add mood associations
+            if (moodIds.Any())
+            {
+                foreach (var moodId in moodIds)
+                {
+                    _context.SongMoods.Add(new SongMood
+                    {
+                        SongId = song.Id,
+                        MoodId = moodId
+                    });
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return await GetSongByIdAsync(song.Id, userId) ?? song;
+        }
+
+        public async Task<Song?> UpdateSongWithLocalMediaAsync(int songId, int userId, string title, string artist, IFormFile? mediaFile, List<int> moodIds)
+        {
+            var song = await _context.Songs
+                .Include(s => s.SongMoods)
+                .FirstOrDefaultAsync(s => s.Id == songId && s.UserId == userId);
+
+            if (song == null)
+                return null;
+
+            // Update basic properties
+            song.Title = title;
+            song.Artist = artist;
+
+            // If new media file is provided, replace the existing one
+            if (mediaFile != null && mediaFile.Length > 0)
+            {
+                // Delete old file if it exists
+                if (!string.IsNullOrEmpty(song.LocalFilePath))
+                {
+                    _mediaStorageService.DeleteMediaFile(song.LocalFilePath);
+                }
+
+                var uploadResult = await _mediaStorageService.SaveMediaFileAsync(mediaFile, userId);
+                
+                if (!uploadResult.Success)
+                    throw new InvalidOperationException(uploadResult.ErrorMessage ?? "Failed to upload media file");
+
+                song.LocalFilePath = uploadResult.FilePath;
+                song.LocalFileName = uploadResult.FileName;
+                song.LocalFileType = uploadResult.FileType;
+                song.LocalFileSizeBytes = uploadResult.FileSize;
+                song.YouTubeUrl = string.Empty; // Clear YouTube URL when uploading local media
+            }
+
+            // Remove existing mood associations
+            _context.SongMoods.RemoveRange(song.SongMoods);
+
+            // Add new mood associations
+            foreach (var moodId in moodIds)
+            {
+                song.SongMoods.Add(new SongMood
+                {
+                    SongId = song.Id,
+                    MoodId = moodId
+                });
+            }
+
+            await _context.SaveChangesAsync();
+            return await GetSongByIdAsync(songId, userId);
+        }
+
         public async Task<bool> DeleteSongAsync(int songId, int userId)
         {
             var song = await _context.Songs
@@ -100,6 +193,12 @@ namespace MoodPlaylistGenerator.Services
 
             if (song == null)
                 return false;
+
+            // Delete associated media file if it exists
+            if (!string.IsNullOrEmpty(song.LocalFilePath))
+            {
+                _mediaStorageService.DeleteMediaFile(song.LocalFilePath);
+            }
 
             _context.Songs.Remove(song);
             await _context.SaveChangesAsync();
@@ -151,6 +250,31 @@ namespace MoodPlaylistGenerator.Services
             {
                 return "";
             }
+        }
+
+        public string GetMediaUrl(Song song)
+        {
+            if (song.IsLocalMedia)
+            {
+                // Check if file exists, if not return Rick Roll URL
+                if (!_mediaStorageService.MediaFileExists(song.LocalFilePath))
+                {
+                    return _mediaStorageService.GetRickRollVideoUrl();
+                }
+                return _mediaStorageService.GetMediaUrl(song.LocalFilePath);
+            }
+            
+            return song.YouTubeUrl;
+        }
+
+        public bool IsLocalMediaMissing(Song song)
+        {
+            return song.IsLocalMedia && !_mediaStorageService.MediaFileExists(song.LocalFilePath);
+        }
+
+        public (string[] VideoExtensions, string[] AudioExtensions, long MaxSizeBytes) GetUploadConstraints()
+        {
+            return _mediaStorageService.GetUploadConstraints();
         }
     }
 }

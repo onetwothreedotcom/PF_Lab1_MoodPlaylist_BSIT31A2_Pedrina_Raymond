@@ -33,13 +33,113 @@
                 <div class="col-lg-8">
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="fab fa-youtube"></i> YouTube Video</h5>
+                            <h5 class="mb-0">
+                                @if (Model.Song.IsLocalMedia)
+                                {
+                                    if (Model.Song.LocalFileType == "video")
+                                    {
+                                        <i class="fas fa-video"></i> <text>Local Video</text>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-music"></i> <text>Local Audio</text>
+                                    }
+                                }
+                                else
+                                {
+                                    <i class="fab fa-youtube"></i> <text>YouTube Video</text>
+                                }
+                            </h5>
                         </div>
                         <div class="card-body p-0">
-                            @if (!string.IsNullOrEmpty(Model.YouTubeVideoId))
+                            @if (Model.IsUsingRickRollFallback)
+                            {
+                                <div class="alert alert-warning mx-3 mt-3" role="alert">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Media file not found!</strong> 
+                                    Showing Rick Roll as fallback. Please re-upload your media file.
+                                </div>
+                                <div class="position-relative">
+                                    <!-- Rick Roll Fallback Player Controls -->
+                                    <div class="video-controls p-3 bg-danger text-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0 text-white">🎵 Rick Roll Fallback (Original: @Model.Song.Title)</h6>
+                                            <small class="text-light opacity-75">by Rick Astley (Original by: @Model.Song.Artist)</small>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-outline-light btn-sm" onclick="toggleTheater()">
+                                                <i class="fas fa-expand" id="theaterIcon"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Rick Roll Video Container -->
+                                    <div class="youtube-container" id="videoContainer">
+                                        <div class="ratio ratio-16x9">
+                                            <iframe id="rickRollPlayer" 
+                                                    src="@Model.MediaUrl" 
+                                                    title="Rick Roll - Never Gonna Give You Up"
+                                                    frameborder="0" 
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                                    allowfullscreen>
+                                            </iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else if (Model.Song.IsLocalMedia && !string.IsNullOrEmpty(Model.MediaUrl))
                             {
                                 <div class="position-relative">
-                                    <!-- Video Player Controls -->
+                                    <!-- Local Media Player Controls -->
+                                    <div class="video-controls p-3 bg-success text-white d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0 text-white">Now Playing: @Model.Song.Title</h6>
+                                            <small class="text-light opacity-75">by @Model.Song.Artist (@Model.Song.LocalFileType)</small>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-outline-light btn-sm" onclick="toggleTheater()">
+                                                <i class="fas fa-expand" id="theaterIcon"></i>
+                                            </button>
+                                            <a href="@Model.MediaUrl" target="_blank" class="btn btn-outline-light btn-sm">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Local Media Container -->
+                                    <div class="local-media-container" id="mediaContainer">
+                                        @if (Model.Song.LocalFileType == "video")
+                                        {
+                                            <video id="localVideoPlayer" controls style="width: 100%; height: auto;">
+                                                <source src="@Model.MediaUrl" type="video/mp4">
+                                                <source src="@Model.MediaUrl" type="video/avi">
+                                                <source src="@Model.MediaUrl" type="video/mov">
+                                                <source src="@Model.MediaUrl" type="video/webm">
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        }
+                                        else
+                                        {
+                                            <div class="audio-player-wrapper p-4">
+                                                <audio id="localAudioPlayer" controls style="width: 100%;">
+                                                    <source src="@Model.MediaUrl" type="audio/mpeg">
+                                                    <source src="@Model.MediaUrl" type="audio/wav">
+                                                    <source src="@Model.MediaUrl" type="audio/ogg">
+                                                    <source src="@Model.MediaUrl" type="audio/m4a">
+                                                    <source src="@Model.MediaUrl" type="audio/aac">
+                                                    Your browser does not support the audio element.
+                                                </audio>
+                                                <div class="text-center mt-3">
+                                                    <i class="fas fa-music fa-3x text-muted"></i>
+                                                    <p class="text-muted mt-2">@Model.Song.LocalFileName</p>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            else if (!string.IsNullOrEmpty(Model.YouTubeVideoId))
+                            {
+                                <div class="position-relative">
+                                    <!-- YouTube Video Player Controls -->
                                     <div class="video-controls p-3 bg-dark text-white d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="mb-0 text-white">Now Playing: @Model.Song.Title</h6>
@@ -55,7 +155,7 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- Video Container -->
+                                    <!-- YouTube Video Container -->
                                     <div class="youtube-container" id="videoContainer">
                                         <div class="ratio ratio-16x9">
                                             <iframe id="youtubePlayer" 
@@ -73,17 +173,37 @@
                             {
                                 <div class="text-center py-4">
                                     <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
-                                    <p class="text-muted">Unable to load video preview</p>
-                                    <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-primary">
-                                        <i class="fab fa-youtube"></i> Open in YouTube
-                                    </a>
+                                    <p class="text-muted">Unable to load media preview</p>
+                                    @if (!string.IsNullOrEmpty(Model.Song.YouTubeUrl))
+                                    {
+                                        <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-primary">
+                                            <i class="fab fa-youtube"></i> Open in YouTube
+                                        </a>
+                                    }
                                 </div>
                             }
                         </div>
                         <div class="card-footer">
-                            <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-primary">
-                                <i class="fab fa-youtube"></i> Watch on YouTube
-                            </a>
+                            @if (Model.Song.IsLocalMedia)
+                            {
+                                @if (Model.IsLocalMediaMissing)
+                                {
+                                    <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Local file missing</span>
+                                }
+                                else
+                                {
+                                    <a href="@Model.MediaUrl" target="_blank" class="btn btn-outline-success">
+                                        <i class="fas fa-download"></i> Download @(Model.Song.LocalFileType?.ToUpper() ?? "FILE")
+                                    </a>
+                                    <span class="text-muted ms-2">File: @Model.Song.LocalFileName</span>
+                                }
+                            }
+                            else if (!string.IsNullOrEmpty(Model.Song.YouTubeUrl))
+                            {
+                                <a href="@Model.Song.YouTubeUrl" target="_blank" class="btn btn-outline-primary">
+                                    <i class="fab fa-youtube"></i> Watch on YouTube
+                                </a>
+                            }
                         </div>
                     </div>
                 </div>

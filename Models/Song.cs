@@ -12,9 +12,14 @@ namespace MoodPlaylistGenerator.Models
         [Required]
         public string Artist { get; set; } = string.Empty;
         
-        [Required]
         [Url]
         public string YouTubeUrl { get; set; } = string.Empty;
+        
+        public string? LocalFilePath { get; set; }
+        public string? LocalFileType { get; set; } // "audio" or "video"
+        public string? LocalFileName { get; set; }
+        public long? LocalFileSizeBytes { get; set; }
+        public bool IsLocalMedia => !string.IsNullOrEmpty(LocalFilePath);
         
         public int UserId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
